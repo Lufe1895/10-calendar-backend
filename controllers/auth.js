@@ -1,38 +1,42 @@
 const { response } = require('express');
-const { validationResult } = require('express-validator');
+const bcrypt = require('bcryptjs');
+const User = require('../models/User');
 
-const createUser = (req, res = response) => {
-    const { name, email, password } = req.body;
+const createUser = async(req, res = response) => {
+    const { email, password } = req.body;
+    try {
+        let user = await User.findOne({ email });
 
-    const errors = validationResult(req);
+        if(user) {
+            return res.status(400).json({
+                ok: false,
+                msg: 'Este usuario ya existe.',
+            })
+        }
 
-    if(!errors.isEmpty()) {
-        return res.status(400).json({
-            ok: false,
-            errors: errors.mapped(),
+        user = new User(req.body);
+
+        const salt = bcrypt.genSaltSync();
+        user.password = bcrypt.hashSync(password, salt);
+
+        await user.save();
+
+        res.status(201).json({
+            ok: true,
+            id: user.id,
+            name: user.name,
         });
+    } catch (e) {
+        res.status(500).json({
+            ok: false,
+            msg: 'Hable con el administrador',
+        });
+        console.log(e);
     }
-
-    res.status(201).json({
-        ok: true,
-        msg: 'register',
-        name,
-        email,
-        password,
-    });
 }
 
 const loginUSer = (req, res = response) => {
     const { email, password } = req.body;
-
-    const errors = validationResult(req);
-
-    if(!errors.isEmpty()) {
-        return res.status(400).json({
-            ok: false,
-            errors: errors.mapped(),
-        });
-    }
 
     res.status(201).json({
         ok: true,
