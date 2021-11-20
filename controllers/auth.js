@@ -1,6 +1,7 @@
 const { response } = require('express');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
+const { generateJWT } = require('../helpers/jwt')
 
 const createUser = async(req, res = response) => {
     const { email, password } = req.body;
@@ -35,21 +36,53 @@ const createUser = async(req, res = response) => {
     }
 }
 
-const loginUSer = (req, res = response) => {
+const loginUSer = async(req, res = response) => {
     const { email, password } = req.body;
 
-    res.status(201).json({
-        ok: true,
-        msg: 'login',
-        email,
-        password,
-    });
+    try{
+        let user = await User.findOne({ email });
+
+        if(!user) {
+            return res.status(400).json({
+                ok: false,
+                msg: 'Este usuario no existe.',
+            })
+        }
+
+        const validPassword = bcrypt.compareSync(password, user.password);
+
+        if(!validPassword) {
+            return res.status(400).json({
+                ok: false,
+                msg: 'Contraseña incorrecta.',
+            })
+        }
+
+        const token = await generateJWT(user.id, user.name);
+
+        res.json({
+            ok: true,
+            uid: user.id,
+            name: user.name,
+            token,
+        })
+    } catch (e) {
+        console.log(e);
+        res.status(500).json({
+            ok: false,
+            msg: 'Hable con el administrador',
+        })
+    }
 }
 
-const revalidateToken = (req, res = response) => {
+const revalidateToken = async(req, res = response) => {
+    const { uid, name } = req;
+
+    const token = await generateJWT(uid, name);
+
     res.json({
         ok: true,
-        msg: 'renew'
+        token,
     });
 }
 
