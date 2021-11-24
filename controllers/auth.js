@@ -22,10 +22,13 @@ const createUser = async(req, res = response) => {
 
         await user.save();
 
+        const token = await generateJWT(user.id, user.name);
+
         res.status(201).json({
             ok: true,
             id: user.id,
             name: user.name,
+            token,
         });
     } catch (e) {
         res.status(500).json({
